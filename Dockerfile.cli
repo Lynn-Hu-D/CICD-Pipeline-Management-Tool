@@ -1,0 +1,46 @@
+# Use the Python 3.11 base image which includes the necessary dependencies for virtual environments
+FROM python:3.11
+
+# Set up environment variables for server
+ENV SERVER_URL=http://127.0.0.1:8000
+
+# Install required system packages, including python3-venv and python3-pip
+RUN apt-get update && apt-get install -y \
+    curl \
+    jq \
+    bash \
+    git \
+    postgresql-client \
+    docker.io \
+    python3 \
+    python3-venv \
+    python3-pip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set the working directory and copy application code
+WORKDIR /app
+COPY . /app
+
+# Create a virtual environment in /app/venv directory
+# RUN python3 -m venv /app/venv
+RUN python -m venv app/venv
+
+# Install dependencies
+RUN app/venv/bin/pip install -e .
+
+# Expose necessary ports
+EXPOSE 5432 8000 8080
+
+# Create a startup script to run both FastAPI and the CLI tool within the virtual environment
+RUN echo '#!/bin/bash\n\
+    # Set logging level for uvicorn to suppress unnecessary logs\n\
+    export UVICORN_LOG_LEVEL=warning\n\
+    # Activate virtual environment and run FastAPI server using the virtual environment\'s Python\n\
+    app/venv/bin/uvicorn server.server_db:app --host 0.0.0.0 --port 8000 --reload &\n\
+    # Wait a few seconds for the server to be ready\n\
+    sleep 5\n\
+    # Run the t2-cicd command or any other command passed to the container using the virtual environment\'s Python\n\
+    exec app/venv/bin/t2-cicd "$@"' > /start.sh && chmod +x /start.sh
+
+# Use the script as the entrypoint to run both the FastAPI server and the CLI
+ENTRYPOINT ["/start.sh"]

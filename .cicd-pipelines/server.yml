@@ -1,0 +1,42 @@
+# Removed 'on' section since it's now optional
+
+name: mock-data
+
+global_config:
+  name: "T2 pipeline with prebuilt docker image running"
+  docker_registry: "docker.io"
+  docker_image: "hhhly/cicd-base-image"
+  artifact_upload_path: "/artifacts"
+
+stages:
+  - name: prepare
+    order: 1
+  - name: build
+    order: 2
+  - name: test
+    order: 3
+
+jobs:
+  prepare_environment:
+    name: "prepare_environment"
+    stage: "prepare"
+    commands:
+      - "echo 'Preparing environment'"
+    allow_failure: false
+  
+  build_app:
+    name: "build_app"
+    stage: "build"
+    commands:
+      - "echo 'Building application'"
+    dependencies:
+      - "prepare_environment"
+
+  run_unit_tests:
+    name: "run_unit_tests"
+    stage: "test"
+    commands:
+      - "echo 'Running unit tests'"
+    allow_failure: true
+    dependencies:
+      - "build_app"

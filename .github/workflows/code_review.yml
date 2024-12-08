@@ -1,0 +1,175 @@
+name: Code Review Pipeline
+
+on:
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - '**'
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    runs-on: ubuntu-latest
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Set up Python with Poetry
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      # Install Poetry
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+
+      # Cache Poetry dependencies
+      - name: Cache Poetry dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pypoetry
+          key: ${{ runner.os }}-poetry-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-poetry-
+
+      # Install dependencies and package
+      - name: Install dependencies and package
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"  # Ensure Poetry is in the PATH
+          poetry install
+          poetry build
+
+  # Job for running tests and collecting coverage
+  test:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Set up Python with Poetry
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      # Install Poetry
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+
+      # Install dependencies
+      - name: Install dependencies
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          poetry install
+
+      # Run unit tests with coverage
+      - name: Run tests with coverage
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          poetry run pytest
+          # poetry run pytest --cov=cli --cov=server --cov=database --cov-report=xml --cov-report=term --cov-omit="tests/*" --cov-branch --disable-warnings
+
+      # Check if coverage is >= 60%
+      # - name: Enforce coverage threshold
+      #   run: |
+      #     coverage_percentage=$(poetry run coverage report | grep TOTAL | awk '{print $4}' | sed 's/%//')
+      #     if [ "$coverage_percentage" -lt 60 ]; then
+      #       echo "Code coverage is below 60%. Failing the workflow."
+      #       exit 1
+      #     fi
+
+      # Upload coverage report
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.xml
+
+      # Upload test results
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: ./test-results
+
+  # Job to run Flake8 (static analysis tool)
+  flake8:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Set up Python with Poetry
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      # Install Poetry
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+
+      # Install dependencies using Poetry
+      - name: Install dependencies
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          poetry install
+
+      - name: Run Flake8
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          poetry run flake8 --max-line-length=120
+
+      - name: Upload Flake8 report
+        uses: actions/upload-artifact@v4
+        with:
+          name: flake8-report
+          path: ./flake8-report.txt
+
+  # Job for generate documentation
+  docs:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Set up Python with Poetry
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      # Install Poetry
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+
+      # Install dependencies using Poetry
+      - name: Install dependencies
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          poetry install
+
+      # Generate documentation (example with Sphinx)
+      - name: Generate Documentation
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          poetry run sphinx-build -b html docs/source docs/_build/
+          
+      - name: Upload documentation
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-docs
+          path: docs/_build/

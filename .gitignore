@@ -1,0 +1,22 @@
+venv
+.DS_Store
+**/.DS_Store
+docs/_build/html/
+__pycache__
+t2_cicd.egg-info/
+cli/__pycache__/
+cli/commands/__pycache__/
+tmp/
+**/validation_report.txt
+**/data
+**/.idea
+.idea
+t2_cicd.egg-info
+# Ignore everything under docs
+docs/*
+# But do not ignore the source folder
+!docs/source/
+
+.coverage
+coverage.xml
+dist/
